@@ -20,9 +20,11 @@ Once you have those, grab this repository with:
     cd GenUtahSky
     make
 
-To use the system in a Radiance scene, add the following to a `.rad` file:
+To use the system in a Radiance scene, simply copy all of the files in this directory into the directory containing your scene, and add a command like the following to one of your `.rad` files:
 
+    !genutahsky 6 23 19 -t 5.0 -a 45 -o 105
 
+This will generate the proper materials for a sky at 45N 105W, on June 23 at 7pm local time, with a turbidity of 5 (2 represents very clear air, 10 is hazy).
 
 
 ### Copyrights and licensing
