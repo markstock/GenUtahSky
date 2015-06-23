@@ -1,0 +1,27 @@
+# Stars from Tycho-2 star catalog
+void colorpict starmapcolor
+7 noneg noneg noneg TychoSkymapII.t5_08192x04096.hdr sphere.cal inf_u inf_v
+0
+1 0.5
+
+#starmapcolor glow starmapglow
+#0
+#0
+#4 0.0003 0.0003 0.0003 -1
+#starmapglow source starmap
+#0
+#0
+#4 0 0 1 360
+
+#void colorpict starcolor
+#7 noneg noneg noneg TychoSkymapII.t5_00080x00040.hdr sphere.cal inf_u inf_v
+#0
+#1 0.5
+#starcolor illum starglow
+#1 void
+#0
+#3 0.0003 0.0003 0.0003
+#starglow source starlight
+#0
+#0
+#4 0 0 1 360

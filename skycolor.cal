@@ -1,0 +1,124 @@
+{
+     skycolor.cal - Sky color function for Radiance skies, meant
+                    to work in place of skybright.cal
+
+     Portions Copyright Mark Stock, 1998
+     All the rest, LBL, 1993
+
+     Caveat: This routine does not work with an intermediate sky
+             yet, I haven't separated the sky's influence from the
+             sun's influence.
+
+     These first 7 args are the same as for skybright.cal:
+
+     A1			- 1 for CIE clear, 2 for CIE overcast,
+				  3 for uniform, 4 for CIE intermediate
+     A2			- zenith brightness
+     A3			- ground plane brightness
+     A4			- normalization factor based on sun direction
+     A5,A6,A7		- sun direction
+
+     A8,A9,A10		- zenith color (rgb)
+     A11,A12,A13	- horizon color (rgb)
+     A14,A15,A16	- nadir color (rgb)
+     A17,A18,A19	- sun color (rgb)
+
+     An example usage for a late afternoon sky is:
+
+     # gensky 4 30 16.2 -a 42 +s
+     # Local solar time: 16.11
+     # Solar altitude and azimuth: 30.6 81.9
+     # Ground ambient level: 15.4
+
+     void light solar
+     0
+     0
+     3 6.19e+06 6.19e+06 6.19e+06
+
+     solar source sun
+     0
+     0
+     4 -0.852270 -0.121498 0.508797 0.5
+
+     #void brightfunc skyfunc
+     #2 skybr skybright.cal
+     #0
+     #7 1 7.62e+00 1.51e+01 4.03e-01 -0.852270 -0.121498 0.508797
+     # notice how I stole this line for skycolor below?
+
+     void colorfunc skyfunc
+     4 skyr skyg skyb skycolor.cal
+     0
+     19 1 7.62e+00 1.51e+01 4.03e-01 -0.852270 -0.121498 0.508797
+        0.5 0.6 2.0
+        1.5 1.5 1.5
+        1.2 0.9 0.3
+        1.1 1.1 0.9
+     # that's zenith, horizon, nadir, sun colors
+
+     skyfunc glow sky_glow
+     0
+     0
+     4 1.0 1.0 1.0 0
+
+     sky_glow source sky
+     0
+     0
+     4 0 0 1 360
+
+}
+
+{ some utilities }
+
+wmean(a, x, b, y) = (a*x + b*y) / (a + b);
+zfactor = (Dz+1.01)^10;
+
+{ the brightness calculation }
+
+skybr = wmean(zfactor,
+	select(A1, sunnysky, cloudysky, unifsky, intersky),
+	1.0/zfactor, A3);
+
+{ a is the color/weight of the sun, b is the weight of the sky }
+sunnymult(a, b) = (b*.91 + a*(10*exp(-3*gamma) + .45*cosgamma*cosgamma))
+	    * if( Dz - .01, 1.0 - exp(-.32/Dz), 1.0) / A4;
+sunnysky = A2 * sunnymult(1.0, 1.0);
+
+cloudymult = (1 + 2*Dz)/3;
+cloudysky = A2 * (1 + 2*Dz)/3;
+
+unifsky = A2;
+
+intermult = ( (1.35*sin(5.631-3.59*eta)+3.12)*sin(4.396-2.6*zt)
+                    + 6.37 - eta ) / 2.326 *
+            exp(gamma*-.563*((2.629-eta)*(1.562-zt)+.812)) / A4;
+intersky = A2 * intermult;
+
+cosgamma = Dx*A5 + Dy*A6 + Dz*A7;
+gamma = Acos(cosgamma);		{ angle from sun to this point in sky }
+zt = Acos(A7);			{ angle from zenith to sun }
+eta = Acos(Dz);			{ angle from zenith to this point in sky }
+
+
+{ the color calculation }
+
+nohr = wmean(zfactor,
+       select(A1, sunnymult(arg(17),A8)*A2, cloudymult*A2*A8, A2*A8, intermult*A2*A8),
+       1.0/zfactor, A3*arg(14));
+nohg = wmean(zfactor,
+       select(A1, sunnymult(arg(18),A9)*A2, cloudymult*A2*A9, A2*A9, intermult*A2*A9),
+       1.0/zfactor, A3*arg(15));
+nohb = wmean(zfactor,
+       select(A1, sunnymult(arg(19),A10)*A2, cloudymult*A2*A10, A2*A10, intermult*A2*A10),
+       1.0/zfactor, A3*arg(16));
+
+{ add the horizon color calculation }
+
+{ the "2" is the sharpness of the horizon color band, higher is sharper;
+  the "10.0" is the width of the band, higher is narrower }
+hfactor = 1.0/(1.0+(Dz*10.0)^2);
+
+skyr = wmean(hfactor, skybr*arg(11), 1-hfactor, nohr);
+skyg = wmean(hfactor, skybr*arg(12), 1-hfactor, nohg);
+skyb = wmean(hfactor, skybr*arg(13), 1-hfactor, nohb);
+

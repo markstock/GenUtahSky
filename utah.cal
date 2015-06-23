@@ -1,0 +1,119 @@
+{
+     preetham.cal - Sky color function for Radiance skies, meant
+                    to work in place of skybright.cal
+
+     From Preetham, Shirley, Smits, "A Practical, Analytical Model for Daylight"
+
+     Converted to Radiance by Mark J. Stock, mstock@umich.edu
+
+     A1			- Turbidity
+     A2,A3,A4		- sun direction
+
+     An example usage for a late afternoon sky follows:
+     (run gensky 4 30 16.2 -a 42 +s to create the following text)
+
+     # gensky 4 30 16.2 -a 42 +s
+     # Local solar time: 16.11
+     # Solar altitude and azimuth: 30.6 81.9
+     # Ground ambient level: 15.4
+
+     void light solar
+     0
+     0
+     3 6.19e+06 6.19e+06 6.19e+06
+
+     solar source sun
+     0
+     0
+     4 -0.852270 -0.121498 0.508797 0.5
+
+     #void brightfunc skyfunc
+     #2 skybr skybright.cal
+     #0
+     #7 1 7.62e+00 1.51e+01 4.03e-01 -0.852270 -0.121498 0.508797
+     # notice how I stole this line for skycolor below?
+
+     void colorfunc skyfunc
+     4 skyr skyg skyb utah.cal
+     0
+     4 2. -0.852270 -0.121498 0.508797
+
+     skyfunc glow sky_glow
+     0
+     0
+     4 1.0 1.0 1.0 0
+
+     sky_glow source sky
+     0
+     0
+     4 0 0 1 180
+
+     Or, just use "genutahsky", included in this package
+
+}
+
+{ perez(theta, gamma, a, b, c, d, e) = (1.+a*exp(b/cos(theta))) * (1+c*exp(d*gamma)+e*cos(gamma)*cos(gamma)); }
+perez(t, g, a, b, c, d, e) = (1.+a*exp(b/(0.004+abs(cos(t))))) * (1+c*exp(d*g)+e*cos(g)*cos(g));
+
+cosgamma = Dx*A2 + Dy*A3 + Dz*A4;
+gamma = Acos(cosgamma);		{ angle from sun to this point in sky }
+theta = Acos(Dz);		{ angle from zenith to this point in sky }
+thetas = Acos(A4);		{ angle from zenith to sun }
+turb = bound(1.2,A1,6.);	{ clamp the bounds of turbidity }
+
+{ zenith brightness, chromaticity }
+yyzTest = (4.0453*turb - 4.971)*tan((0.4444-turb/120.)*(3.1415927-2*thetas)) - 0.2155*turb + 2.4192;
+yyz = if (yyzTest, yyzTest, 0.);
+xz = 0.25886 + 0.00394*turb + thetas*(0.06052 - 0.03202*turb*(1.-0.065272*turb) + thetas*(-0.21196 + 0.06377*turb*(1.-0.058805*turb) + thetas*(0.11693 - 0.02903*turb*(1.-0.057182*turb))));
+yz = 0.26688 + 0.00516*turb + thetas*(0.0667 - 0.04153*turb*(1.-0.07633*turb) + thetas*(-0.26756 + 0.0897*turb*(1.-0.068004*turb) + thetas*(0.15346 - 0.04214*turb*(1.-0.065259*turb))));
+
+{ distribution coefficients for luminance, chromaticity; functions of turbidity }
+ayy = 0.1787*turb - 1.463;
+byy = -0.3554*turb + 0.4275;
+cyy = -0.0227*turb + 5.3251;
+dyy = 0.1206*turb - 2.5771;
+eyy = -0.067*turb + 0.3703;
+
+ax = -0.0193*turb - 0.2593;
+bx = -0.0665*turb + 0.0008;
+cx = -0.0004*turb + 0.2125;
+dx = -0.0641*turb - 0.8989;
+ex = -0.0033*turb + 0.0452;
+
+ay = -0.0167*turb - 0.2608;
+by = -0.095*turb + 0.0092;
+cy = -0.0079*turb + 0.2102;
+dy = -0.0441*turb - 1.6537;
+ey = -0.0109*turb + 0.0529;
+
+{ point values for luminance, chromaticity }
+yyptemp = yyz * perez(theta, gamma, ayy, byy, cyy, dyy, eyy) / perez(0., thetas, ayy, byy, cyy, dyy, eyy);
+xp = xz * perez(theta, gamma, ax, bx, cx, dx, ex) / perez(0., thetas, ax, bx, cx, dx, ex);
+yp = yz * perez(theta, gamma, ay, by, cy, dy, ey) / perez(0., thetas, ay, by, cy, dy, ey);
+
+{ hack to allow stars to shine through haze at dusk and dawn }
+{yyp = yyptemp;}
+yyp = yyptemp * if(A4-0.05, 1.0, exp(20.*(A4-0.05)));
+
+{ output brightness }
+skybr = yyp;
+
+{ output radiance }
+
+{ first, tristimulus values (are these CIE XYZ?)}
+x = yyp*xp/yp;
+y = yyp;
+z = yyp*if(1.-xp-yp, 1-xp-yp, 0.)/yp;
+{z = yyp*(1.-xp-yp)/yp;}
+
+{ convert CIE XYZ to RGB with D65 from http://www.poynton.com/PDFs/Guided_tour.pdf ?}
+{ do not apply gamma, as we are in linear units }
+{skyr = 3.240479*x - 1.537150*y - 0.498535*z;
+skyg = -0.969256*x + 1.875992*y + 0.041556*z;
+skyb = 0.055648*x - 0.204043*y + 1.057311*z;}
+
+{ convert using CIE M^-1 matrix from http://www.brucelindbloom.com/Eqn_RGB_XYZ_Matrix.html }
+skyr = 2.3706743*x - 0.9000405*y - 0.4706338*z;
+skyg = -0.513885*x + 1.4253036*y + 0.0885814*z;
+skyb = 0.0052982*x - 0.0146949*y + 1.0093968*z;
+
