@@ -26,6 +26,10 @@ To use the system in a Radiance scene, simply copy all of the files in this dire
 
 This will generate the proper materials for a sky at 45N 105W, on June 23 at 7pm local time, with a turbidity of 5 (2 represents very clear air, 10 is hazy).
 
+If you don't want to clutter your working directory up, drop these files into your Radiance `lib` directory, often at `/usr/local/lib/ray`.
+
+If you're going to use `pcond` on night scenes, use `-v -s` instead of `-h`. The latter will blur the stars unrealistically.
+
 
 ### Copyrights and licensing
 
