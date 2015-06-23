@@ -5,7 +5,7 @@
 //
 // Portions Copyright (c) Mark J. Stock., 2009.
 //
-// Portions written by Mark J. Stock, mstock@umich.edu
+// Portions written by Mark J. Stock, markjstock@gmail.com
 // Remainder written by Greg Ward
 //
 // compile with:

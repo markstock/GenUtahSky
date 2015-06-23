@@ -1,37 +1,16 @@
 {
-     preetham.cal - Sky color function for Radiance skies, meant
+     utah.cal - Sky color function for Radiance skies, meant
                     to work in place of skybright.cal
 
      From Preetham, Shirley, Smits, "A Practical, Analytical Model for Daylight"
 
-     Converted to Radiance by Mark J. Stock, mstock@umich.edu
+     Converted to Radiance by Mark J. Stock, markjstock@gmail.com
 
      A1			- Turbidity
      A2,A3,A4		- sun direction
 
-     An example usage for a late afternoon sky follows:
-     (run gensky 4 30 16.2 -a 42 +s to create the following text)
-
-     # gensky 4 30 16.2 -a 42 +s
-     # Local solar time: 16.11
-     # Solar altitude and azimuth: 30.6 81.9
-     # Ground ambient level: 15.4
-
-     void light solar
-     0
-     0
-     3 6.19e+06 6.19e+06 6.19e+06
-
-     solar source sun
-     0
-     0
-     4 -0.852270 -0.121498 0.508797 0.5
-
-     #void brightfunc skyfunc
-     #2 skybr skybright.cal
-     #0
-     #7 1 7.62e+00 1.51e+01 4.03e-01 -0.852270 -0.121498 0.508797
-     # notice how I stole this line for skycolor below?
+     To generate a simple +z half-dome clear blue sky, use the following code.
+     Note that "genutahsky" will create all of this for you.
 
      void colorfunc skyfunc
      4 skyr skyg skyb utah.cal
@@ -47,8 +26,6 @@
      0
      0
      4 0 0 1 180
-
-     Or, just use "genutahsky", included in this package
 
 }
 

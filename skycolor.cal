@@ -5,6 +5,9 @@
      Portions Copyright Mark Stock, 1998
      All the rest, LBL, 1993
 
+     NOTE: This is included in GenUtahSky for reference, and is not
+           intended to be used. Use "genutahsky" and "utah.cal".
+
      Caveat: This routine does not work with an intermediate sky
              yet, I haven't separated the sky's influence from the
              sun's influence.
