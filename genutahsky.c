@@ -445,6 +445,8 @@ int writeStars (double jd, double zPos, struct ln_lnlat_posn obs) {
   // what to use. Maybe render a view at midnight and then run Stallarium
   // to see how much to shift?
   sinth = veq[2]/sin(rx1*DEGTORAD);
+  if (sinth < -1.) sinth = -1.;
+  if (sinth > 1.) sinth = 1.;
   //fprintf(stderr,"sinth %g\n",sinth);
   rz1 = asinf(sinth);
   //fprintf(stderr,"theta %g or %g\n",rz1*57.2957787,180-rz1*57.2957787);
