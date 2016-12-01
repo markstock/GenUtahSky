@@ -258,18 +258,19 @@ int writeMoon (double jd, struct ln_lnlat_posn obs) {
   lunPos[1] = -cos(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
   lunPos[2] = sin(hrz.alt*DEGTORAD);
 
+  fprintf(stdout,"\n# Lunar altitude %7.3f deg, azimuth %7.3f deg\n",hrz.alt,hrz.az);
   if (hrz.alt < -1.0) {
-    fprintf(stdout,"\n# Lunar altitude %7.3f deg, azimuth %7.3f deg\n",hrz.alt,hrz.az);
     return(FALSE);
   }
-
-  fprintf(stdout,"\n# Moon color, luminance, position\n");
-  fprintf(stdout,"# lunar altitude %7.3f deg, azimuth %7.3f deg\n",hrz.alt,hrz.az);
 
   // get phase and fraction illuminated
   phase = ln_get_lunar_phase(jd);
   discFrac = ln_get_lunar_disk(jd);
-  fprintf(stdout,"# lunar phase %7.3f, disc illum fraction %7.3f\n",phase,discFrac);
+
+  // get disc size
+  discSize = 2.*ln_get_lunar_sdiam(jd)/3600.0;
+
+  fprintf(stdout,"# lunar phase %7.3f, disc illum fraction %7.3f, disc size %6.2f deg\n",phase,discFrac,discSize);
   // phase 0/360 is full, 180 is new
 
   // get phase details -- later
@@ -285,9 +286,6 @@ int writeMoon (double jd, struct ln_lnlat_posn obs) {
   // moon is a source, like the sun
   fprintf(stdout,"void light lunar\n");
   fprintf(stdout,"0\n0\n3 %g %g %g\n",lum*lunC[0],lum*lunC[1],lum*lunC[2]);
-
-  // get disc size
-  discSize = 2.*ln_get_lunar_sdiam(jd)/3600.0;
 
   // complete the moon
   fprintf(stdout,"lunar source moon\n");
@@ -316,14 +314,13 @@ void writePlanets (double jd, struct ln_lnlat_posn obs) {
   pos[0] = -sin(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
   pos[1] = -cos(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
   pos[2] = sin(hrz.alt*DEGTORAD);
+  // disc size should be 10-66 arcseconds
+  discSize = 2.*ln_get_venus_sdiam(jd)/3600.0;
+  // apparent magnitude
+  lum = ln_get_venus_magnitude(jd);
+  fprintf(stdout,"\n# Venus at alt %7.3f deg, az %7.3f deg, magnitude %7.3f, disc %6.2f asec\n",hrz.alt,hrz.az,lum,3600*discSize);
   if (hrz.alt > -1.0) {
-    // disc size should be 10-66 arcseconds
-    discSize = 2.*ln_get_venus_sdiam(jd)/3600.0;
-    // apparent magnitude
-    lum = ln_get_venus_magnitude(jd);
-    fprintf(stdout,"\n# Venus at alt %7.3f deg, az %7.3f deg, magnitude %7.3f\n",hrz.alt,hrz.az,lum);
     // convert to luminance
-    //lum = 0.000142264991*100^(-lum/5.);
     lum = 0.000142*exp(-0.921*lum);
     fprintf(stdout,"void light venusian\n");
     fprintf(stdout,"0\n0\n3 %g %g %g\n",lum*col[0],lum*col[1],lum*col[2]);
@@ -337,13 +334,13 @@ void writePlanets (double jd, struct ln_lnlat_posn obs) {
   pos[0] = -sin(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
   pos[1] = -cos(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
   pos[2] = sin(hrz.alt*DEGTORAD);
+  // disc size 30-49 arcseconds
+  discSize = sqrt(ln_get_jupiter_equ_sdiam(jd)*ln_get_jupiter_pol_sdiam(jd));
+  discSize = 2.*discSize/3600.0;
+  // apparent magnitude
+  lum = ln_get_jupiter_magnitude(jd);
+  fprintf(stdout,"\n# Jupiter at alt %7.3f deg, az %7.3f deg, magnitude %7.3f, disc %6.2f asec\n",hrz.alt,hrz.az,lum,3600*discSize);
   if (hrz.alt > -1.0) {
-    // disc size 30-49 arcseconds
-    discSize = sqrt(ln_get_jupiter_equ_sdiam(jd)*ln_get_jupiter_pol_sdiam(jd));
-    discSize = 2.*discSize/3600.0;
-    // apparent magnitude
-    lum = ln_get_jupiter_magnitude(jd);
-    fprintf(stdout,"\n# Jupiter at alt %7.3f deg, az %7.3f deg, magnitude %7.3f\n",hrz.alt,hrz.az,lum);
     // convert to luminance
     lum = 0.000142*exp(-0.921*lum);
     fprintf(stdout,"void light jovian\n");
@@ -358,12 +355,12 @@ void writePlanets (double jd, struct ln_lnlat_posn obs) {
   pos[0] = -sin(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
   pos[1] = -cos(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
   pos[2] = sin(hrz.alt*DEGTORAD);
+  // disc size 30-49 arcseconds
+  discSize = 2.*ln_get_mars_sdiam(jd)/3600.0;
+  // apparent magnitude
+  lum = ln_get_mars_magnitude(jd);
+  fprintf(stdout,"\n# Mars at alt %7.3f deg, az %7.3f deg, magnitude %7.3f, disc %6.2f asec\n",hrz.alt,hrz.az,lum,3600*discSize);
   if (hrz.alt > -1.0) {
-    // disc size 30-49 arcseconds
-    discSize = 2.*ln_get_mars_sdiam(jd)/3600.0;
-    // apparent magnitude
-    lum = ln_get_mars_magnitude(jd);
-    fprintf(stdout,"\n# Mars at alt %7.3f deg, az %7.3f deg, magnitude %7.3f\n",hrz.alt,hrz.az,lum);
     // convert to luminance
     lum = 0.000142*exp(-0.921*lum);
     fprintf(stdout,"void light martian\n");
