@@ -299,7 +299,7 @@ void writePlanets (double jd, struct ln_lnlat_posn obs) {
 
   struct ln_equ_posn equ;	// equatorial moon position
   struct ln_hrz_posn hrz;	// horiz alt/az
-  float pos[3],col[3];
+  float pos[3],col[3],mars_col[3],jup_col[3];
   double lum;			// luminance, best guess
   double discSize;
 
@@ -307,6 +307,16 @@ void writePlanets (double jd, struct ln_lnlat_posn obs) {
   col[0] = 1.0;
   col[1] = 1.0;
   col[2] = 1.0;
+
+  // martian red
+  mars_col[0] = 1.2;
+  mars_col[1] = 0.8;
+  mars_col[2] = 0.4;
+
+  // jupiter brown
+  jup_col[0] = 1.1;
+  jup_col[1] = 0.8;
+  jup_col[2] = 0.5;
 
   // Venus
   ln_get_venus_equ_coords (jd, &equ);
@@ -344,7 +354,7 @@ void writePlanets (double jd, struct ln_lnlat_posn obs) {
     // convert to luminance
     lum = 0.000142*exp(-0.921*lum);
     fprintf(stdout,"void light jovian\n");
-    fprintf(stdout,"0\n0\n3 %g %g %g\n",lum*col[0],lum*col[1],lum*col[2]);
+    fprintf(stdout,"0\n0\n3 %g %g %g\n",lum*jup_col[0],lum*jup_col[1],lum*jup_col[2]);
     fprintf(stdout,"jovian source jupiter\n");
     fprintf(stdout,"0\n0\n4 %g %g %g %.3f\n",pos[0],pos[1],pos[2],discSize);
   }
@@ -364,7 +374,7 @@ void writePlanets (double jd, struct ln_lnlat_posn obs) {
     // convert to luminance
     lum = 0.000142*exp(-0.921*lum);
     fprintf(stdout,"void light martian\n");
-    fprintf(stdout,"0\n0\n3 %g %g %g\n",lum*col[0],lum*col[1],lum*col[2]);
+    fprintf(stdout,"0\n0\n3 %g %g %g\n",lum*mars_col[0],lum*mars_col[1],lum*mars_col[2]);
     fprintf(stdout,"martian source mars\n");
     fprintf(stdout,"0\n0\n4 %g %g %g %.3f\n",pos[0],pos[1],pos[2],discSize);
   }
