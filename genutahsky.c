@@ -168,7 +168,7 @@ int writeSun (double jd, struct ln_lnlat_posn obs, double turb, float *sunPos) {
   sunPos[1] = -cos(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
   sunPos[2] = sin(hrz.alt*DEGTORAD);
 
-  if (hrz.alt < -1.0) {
+  if (hrz.alt < -5.0) {
     fprintf(stdout,"# Solar altitude %7.3f deg, azimuth %7.3f deg\n",hrz.alt,hrz.az);
     return(FALSE);
   }
@@ -259,7 +259,7 @@ int writeMoon (double jd, struct ln_lnlat_posn obs) {
   lunPos[2] = sin(hrz.alt*DEGTORAD);
 
   fprintf(stdout,"\n# Lunar altitude %7.3f deg, azimuth %7.3f deg\n",hrz.alt,hrz.az);
-  if (hrz.alt < -1.0) {
+  if (hrz.alt < -5.0) {
     return(FALSE);
   }
 
@@ -329,7 +329,7 @@ void writePlanets (double jd, struct ln_lnlat_posn obs) {
   // apparent magnitude
   lum = ln_get_venus_magnitude(jd);
   fprintf(stdout,"\n# Venus at alt %7.3f deg, az %7.3f deg, magnitude %7.3f, disc %6.2f asec\n",hrz.alt,hrz.az,lum,3600*discSize);
-  if (hrz.alt > -1.0) {
+  if (hrz.alt > -5.0) {
     // convert to luminance
     lum = 0.000142*exp(-0.921*lum);
     fprintf(stdout,"void light venusian\n");
@@ -350,7 +350,7 @@ void writePlanets (double jd, struct ln_lnlat_posn obs) {
   // apparent magnitude
   lum = ln_get_jupiter_magnitude(jd);
   fprintf(stdout,"\n# Jupiter at alt %7.3f deg, az %7.3f deg, magnitude %7.3f, disc %6.2f asec\n",hrz.alt,hrz.az,lum,3600*discSize);
-  if (hrz.alt > -1.0) {
+  if (hrz.alt > -5.0) {
     // convert to luminance
     lum = 0.000142*exp(-0.921*lum);
     fprintf(stdout,"void light jovian\n");
@@ -370,7 +370,7 @@ void writePlanets (double jd, struct ln_lnlat_posn obs) {
   // apparent magnitude
   lum = ln_get_mars_magnitude(jd);
   fprintf(stdout,"\n# Mars at alt %7.3f deg, az %7.3f deg, magnitude %7.3f, disc %6.2f asec\n",hrz.alt,hrz.az,lum,3600*discSize);
-  if (hrz.alt > -1.0) {
+  if (hrz.alt > -5.0) {
     // convert to luminance
     lum = 0.000142*exp(-0.921*lum);
     fprintf(stdout,"void light martian\n");
