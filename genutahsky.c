@@ -168,7 +168,9 @@ int writeSun (double jd, struct ln_lnlat_posn obs, double turb, float *sunPos) {
   sunPos[1] = -cos(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
   sunPos[2] = sin(hrz.alt*DEGTORAD);
 
-  if (hrz.alt < -5.0) {
+  // do not adjust sun position due to refraction in atmosphere
+
+  if (hrz.alt < -20.0) {
     fprintf(stdout,"# Solar altitude %7.3f deg, azimuth %7.3f deg\n",hrz.alt,hrz.az);
     return(FALSE);
   }
@@ -179,10 +181,8 @@ int writeSun (double jd, struct ln_lnlat_posn obs, double turb, float *sunPos) {
   // sun brightness (from gensky.c, color.h)
   lum = 1.5e9/SUNEFFICACY * (1.147 - .147/(sunPos[2]>.16?sunPos[2]:.16));
 
-  // sun disc size
+  // sun disc size (always about 0.53 deg)
   discSize = 2.*ln_get_solar_sdiam(jd)/3600.0;
-  // that doesn't seem to be working! 4.52329e+08 seriously?
-  //discSize = 0.53;
 
   // give option of breaking sun up into many smaller suns
   // this will allow smoother penumbras at the cost of extra computation
@@ -259,7 +259,7 @@ int writeMoon (double jd, struct ln_lnlat_posn obs) {
   lunPos[2] = sin(hrz.alt*DEGTORAD);
 
   fprintf(stdout,"\n# Lunar altitude %7.3f deg, azimuth %7.3f deg\n",hrz.alt,hrz.az);
-  if (hrz.alt < -5.0) {
+  if (hrz.alt < -10.0) {
     return(FALSE);
   }
 
