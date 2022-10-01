@@ -18,10 +18,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <math.h>
 #include <time.h>
 #include <libnova/julian_day.h>
 #include <libnova/transform.h>
+#include <libnova/refraction.h>
+#include <libnova/apparent_position.h>
 #include <libnova/solar.h>
 #include <libnova/lunar.h>
 #include <libnova/venus.h>
