@@ -30,6 +30,12 @@ If you don't want to clutter your working directory up, drop these files into yo
 
 If you're going to use `pcond` on night scenes, use `-v -s` instead of `-h`. The latter will blur the stars unrealistically.
 
+### To Do
+
+* Use CMake to build and install the package (putting necessary files into radiance library location and binaries into /usr/local/bin
+* Remove libnova in favor of https://github.com/cosinekitty/astronomy
+* Update starfield to https://svs.gsfc.nasa.gov/4851/
+* Have build script retrieve the starfield and reduce its resolution (and increase bit depth) instead of storing it directly in the repository
 
 ### Copyrights and licensing
 
