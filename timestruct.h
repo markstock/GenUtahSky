@@ -36,12 +36,12 @@ void write_utc(Time t) {
 #ifdef LIBNOVA
   struct ln_date date;	// date structure
   ln_get_date (t.jd, &date);
-  fprintf(stdout,"# libnova current time UTC: %4d-%02d-%02d %2d:%02d:%02d\n",
+  fprintf(stdout,"# UTC: %4d-%02d-%02d %2d:%02d:%02d\n",
           date.years,date.months,date.days,
           date.hours,date.minutes,(int)date.seconds);
 #else
   astro_utc_t utc = Astronomy_UtcFromTime(t.atime);
-  fprintf(stdout,"# astronomy current time UTC: %4d-%02d-%02d %2d:%02d:%02d\n",
+  fprintf(stdout,"# UTC: %4d-%02d-%02d %2d:%02d:%02d\n",
           utc.year,utc.month,utc.day,
           utc.hour,utc.minute,(int)utc.second);
 #endif
@@ -63,7 +63,7 @@ int get_year(Time t) {
 void set_to_given(Time* t, const int year, const int month, const int day,
                   const int hour, const int minute, const double seconds,
                   const double meridian) {
-  fprintf(stdout,"# scene time (local): %4d-%02d-%02d %2d:%02d:%02d\n",
+  fprintf(stdout,"# local time: %4d-%02d-%02d %2d:%02d:%02d\n",
           year,month,day,hour,minute,(int)seconds);
 #ifdef LIBNOVA
   struct ln_zonedate zdate;	// date structure, includes gmtoff (seconds east of UTC)
@@ -73,7 +73,8 @@ void set_to_given(Time* t, const int year, const int month, const int day,
   zdate.hours = hour;
   zdate.minutes = minute;
   zdate.seconds = seconds;
-  zdate.gmtoff = 86400 - (int)(240.*meridian);
+  //zdate.gmtoff = 86400 - (int)(240.*meridian);
+  zdate.gmtoff = -(int)(240.*meridian);
   t->jd = ln_get_julian_local_date(&zdate);
 #else
   astro_utc_t utc;

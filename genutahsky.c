@@ -69,7 +69,6 @@ struct {
 };
 
 
-
 // elevation is in degrees above horizon
 void getSunColor (const float elevation, const double turb, float* sunColor) {
 
@@ -179,9 +178,8 @@ int writeSun (Time* time, const double inloc[3], const double turb, float *sunPo
   // sun disc size (always about 0.53 deg)
   discSize = 2.*ln_get_solar_sdiam(time->jd)/3600.0;
 
-  fprintf(stdout,"# libnova: solar altitude %7.3f deg, azimuth %7.3f deg, size %.4f deg\n",alti,azim,discSize);
-
 #else
+
   astro_observer_t observer = Astronomy_MakeObserver(inloc[0], inloc[1], inloc[2]);
   astro_equatorial_t equ_ofdate = Astronomy_Equator(BODY_SUN, &(time->atime), observer, EQUATOR_OF_DATE, ABERRATION);
   // MUST adjust sun position due to refraction in atmosphere
@@ -193,8 +191,8 @@ int writeSun (Time* time, const double inloc[3], const double turb, float *sunPo
   // get solar disc size in deg
   discSize = 2.0*RAD2DEG*atan(SUN_RADIUS_KM / (KM_PER_AU*equ_ofdate.dist));
 
-  fprintf(stdout,"# astronomy: solar altitude %7.3f deg, azimuth %7.3f deg, size %.4f deg\n",alti,azim,discSize);
 #endif
+  fprintf(stdout,"# solar altitude %7.3f deg, azimuth %7.3f deg, size %.4f deg\n",alti,azim,discSize);
 
   // position in vector format
   sunPos[0] = sin(azim*DEGTORAD)*cos(alti*DEGTORAD);
@@ -333,7 +331,7 @@ int writeMoon (Time* time, const double inloc[3]) {
   lunPos[2] = sin(alti*DEGTORAD);
 
   fprintf(stdout,"\n# Lunar altitude %7.3f deg, azimuth %7.3f deg\n",alti,azim);
-  fprintf(stdout,"# magnitude %7.4f, phase %7.3f, disc illum fraction %7.3f, disc size %6.2f deg\n",
+  fprintf(stdout,"# magnitude %7.4f, phase %7.3f, disc illum fraction %7.3f, disc size %6.3f deg\n",
           appar_mag,phase,discFrac,discSize);
 
   // if too low, do not draw
@@ -683,9 +681,7 @@ void writeSkyStarMix (double zPos) {
 
 
 void writeClouds (void) {
-
   // if geometry is available, place some clouds
-
 }
 
 
@@ -895,6 +891,7 @@ int main(int argc, char **argv) {
   iminute = floor(dminutes);
   dseconds = 60.*(dminutes-(double)(iminute));
   set_to_given(&time, year, month, day, ihour, iminute, dseconds, s_meridian);
+  write_utc(time);
 
   // write output ---------------------------------------
 
