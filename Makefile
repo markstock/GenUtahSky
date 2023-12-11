@@ -1,7 +1,12 @@
+CC=cc
+CFLAGS=-std=c99
+DEFS=-DLIBNOVA -DASTRO
+LIBS=-lm -lnova
+
 all : genutahsky getsunvec
 
-genutahsky : genutahsky.c
-	cc -o genutahsky genutahsky.c -lm -lnova
+% : %.c astronomy.c
+	$(CC) $(CFLAGS) $(DEFS) -o $@ $^ $(LIBS)
 
-getsunvec : getsunvec.c
-	cc -o getsunvec getsunvec.c -lm -lnova
+clean :
+	rm -f *.o genutahsky getsunvec

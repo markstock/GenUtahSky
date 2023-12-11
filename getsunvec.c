@@ -2,6 +2,7 @@
 // getsunvec.c
 //
 // Just dump the vector to the sun, assuming +x east, +y north, +z up
+// and brightness equal to top-of-atmosphere
 //
 // Portions Copyright (c) Mark J. Stock., 2009, 2023
 //
@@ -14,18 +15,18 @@
 #include <ctype.h>
 #include <math.h>
 #include <time.h>
+#include <stdbool.h>
+
+#ifdef LIBNOVA
 #include <libnova/julian_day.h>
 #include <libnova/transform.h>
 #include <libnova/refraction.h>
 #include <libnova/apparent_position.h>
 #include <libnova/solar.h>
-#include <libnova/lunar.h>
-#include <libnova/venus.h>
-#include <libnova/jupiter.h>
-#include <libnova/mars.h>
-#define TRUE 1
-#define FALSE 0
-#define STAR_THRESH -0.04	// sun z position above which no stars
+#endif
+#ifdef ASTRO
+#include "astronomy.h"
+#endif
 
 // stuff from gensky.c
 char *progname;
@@ -59,54 +60,169 @@ struct {
         {"", 0}
 };
 
+// use struct to contain one or both times
+typedef struct time_structure {
+#ifdef LIBNOVA
+  double jd;			// used in libnova
+#endif
+#ifdef ASTRO
+  astro_time_t atime;	// used in astronomy
+#endif
+} Time;
+
+void set_to_now(Time* t) {
+#ifdef LIBNOVA
+  t->jd = ln_get_julian_from_sys();
+#endif
+#ifdef ASTRO
+  t->atime = Astronomy_CurrentTime();
+#endif
+}
+
+void write_utc(Time t) {
+#ifdef LIBNOVA
+  struct ln_date date;	// date structure
+  ln_get_date (t.jd, &date);
+  fprintf(stdout,"# libnova UTC: %4d-%02d-%02d %2d:%02d:%02d\n",
+          date.years,date.months,date.days,
+          date.hours,date.minutes,(int)date.seconds);
+#endif
+#ifdef ASTRO
+  astro_utc_t utc = Astronomy_UtcFromTime(t.atime);
+  fprintf(stdout,"# astronomy UTC: %4d-%02d-%02d %2d:%02d:%02d\n",
+          utc.year,utc.month,utc.day,
+          utc.hour,utc.minute,(int)utc.second);
+#endif
+}
+
+int get_year(Time t) {
+  int thisyear;
+#ifdef LIBNOVA
+  struct ln_date date;  // date structure
+  ln_get_date (t.jd, &date);
+  thisyear = date.years;
+#endif
+#ifdef ASTRO
+  astro_utc_t utc = Astronomy_UtcFromTime(t.atime);
+  thisyear = utc.year;
+#endif
+  return thisyear;
+}
+
+void set_to_given(Time* t, const int year, const int month, const int day,
+                  const int hour, const int minute, const double seconds,
+                  const double meridian) {
+  fprintf(stdout,"# Using time: %4d-%02d-%02d %2d:%02d:%02d\n",
+          year,month,day,hour,minute,(int)seconds);
+#ifdef LIBNOVA
+  struct ln_zonedate zdate;	// date structure, includes gmtoff (seconds east of UTC)
+  zdate.years = year;
+  zdate.months = month;
+  zdate.days = day;
+  zdate.hours = hour;
+  zdate.minutes = minute;
+  zdate.seconds = seconds;
+  zdate.gmtoff = 86400 - (int)(240.*meridian);
+  t->jd = ln_get_julian_local_date(&zdate);
+#endif
+#ifdef ASTRO
+  astro_utc_t utc;
+  utc.year = year;
+  utc.month = month;
+  utc.day = day;
+  utc.hour = hour;
+  utc.minute = minute;
+  utc.second = seconds;
+  astro_time_t unadj = Astronomy_TimeFromUtc(utc);
+  // now adjust it based on meridian
+  const double days = meridian / 360.0;
+  t->atime = Astronomy_AddDays(unadj, days);
+#endif
+}
 
 
-int writeSun (double jd, struct ln_lnlat_posn obs, double turb, float *sunPos) {
 
-  struct ln_equ_posn equ;	// equatorial sun position
-  struct ln_hrz_posn hrz;	// horiz alt/az
-  double lum;			// luminance, from gensky.c
-  double discSize;		// solar disc size from libnova
-  double angularSegmentSize = 1.0;	// maximum size of source disc
+int writeSun (Time* time, const double inloc[3], const double turb, float *sunPos) {
+
+  double alti, azim;	// apparent altitude, azimuth from observer on earth
+  double discSize;		// solar disc size
+  double maxAngularSegmentSize = 1.0;	// maximum size of source disc
 					//  <0.53 means subsample the sun
 
+  fprintf(stdout,"\n# Sun brightness and position from space\n");
+
   // get sun position
-  ln_get_solar_equ_coords (jd, &equ);
-  ln_get_hrz_from_equ (&equ, &obs, jd, &hrz);
+#ifdef LIBNOVA
+  struct ln_lnlat_posn obs;	// observer
+  struct ln_equ_posn equ;	// equatorial sun position
+  struct ln_hrz_posn hrz;	// horiz alt/az
+  obs.lat = inloc[0];
+  obs.lng = inloc[1];
+  ln_get_solar_equ_coords (time->jd, &equ);
+  ln_get_hrz_from_equ (&equ, &obs, time->jd, &hrz);
   // 360 deg azimuth is due South, 270 is due East
+  // so correct it to 0=North
+  alti = hrz.alt;
+  azim = hrz.az+180.0;
+  if (azim > 360.0) azim -= 360.0;
+
+  // sun disc size (always about 0.53 deg)
+  discSize = 2.*ln_get_solar_sdiam(time->jd)/3600.0;
+
+  fprintf(stdout,"# libnova: solar altitude %7.3f deg, azimuth %7.3f deg, size %.4f deg\n",alti,azim,discSize);
+#endif
+
+#ifdef ASTRO
+  astro_observer_t observer = Astronomy_MakeObserver(inloc[0], inloc[1], inloc[2]);
+  astro_equatorial_t equ_ofdate = Astronomy_Equator(BODY_SUN, &(time->atime), observer, EQUATOR_OF_DATE, NO_ABERRATION);
+  astro_horizon_t hor = Astronomy_Horizon(&(time->atime), observer, equ_ofdate.ra, equ_ofdate.dec, REFRACTION_NONE);
+  // azimuth from Astronomy_Horizon is CW from 0=North
+  alti = hor.altitude;
+  azim = hor.azimuth;
+
+  // get solar disc size in deg
+  discSize = 2.0*RAD2DEG*atan(SUN_RADIUS_KM / (KM_PER_AU*equ_ofdate.dist));
+
+  fprintf(stdout,"# astronomy: solar altitude %7.3f deg, azimuth %7.3f deg, size %.4f deg\n",alti,azim,discSize);
+#endif
 
   // position in vector format
-  sunPos[0] = -sin(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
-  sunPos[1] = -cos(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
-  sunPos[2] = sin(hrz.alt*DEGTORAD);
+  sunPos[0] = sin(azim*DEGTORAD)*cos(alti*DEGTORAD);
+  sunPos[1] = cos(azim*DEGTORAD)*cos(alti*DEGTORAD);
+  sunPos[2] = sin(alti*DEGTORAD);
 
   // do not adjust sun position due to refraction in atmosphere
 
-  fprintf(stdout,"\n# Sun brightness and position from space\n");
-  fprintf(stdout,"# solar altitude %7.3f deg, azimuth %7.3f deg\n",hrz.alt,hrz.az);
-
   // sun brightness (from gensky.c, color.h)
-  lum = 1.5e9/SUNEFFICACY * (1.147 - .147/(sunPos[2]>.16?sunPos[2]:.16));
+  // this is for Earth's surface, not top-of-atmosphere
+  //double lum = 1.5e9/SUNEFFICACY * (1.147 - .147/(sunPos[2]>.16?sunPos[2]:.16));
 
-  // sun disc size (always about 0.53 deg)
-  discSize = 2.*ln_get_solar_sdiam(jd)/3600.0;
+#ifdef ASTRO
+  // get apparent magnitude of sun
+  astro_illum_t sun_illum = Astronomy_Illumination(BODY_SUN, time->atime);
+  double appar_mag = sun_illum.mag;
+  // see https://en.wikipedia.org/wiki/Illuminance#Astronomy
+  double illuminance = pow(10, 0.4*(-14.18-appar_mag));
+#endif
 
   // give option of breaking sun up into many smaller suns
   // this will allow smoother penumbras at the cost of extra computation
-  if (discSize > angularSegmentSize) {
+  if (discSize > maxAngularSegmentSize) {
     // segment the disc into a large number of smaller discs,
-    // this allows smoother penumbras to be created
+    // this allows smoother and more accurate penumbras to be created
   }
 
-  // write the sun description
+  // someday we will handle eclipses
+
+  // write the Radiance sun description
   fprintf(stdout,"void light solar\n");
   fprintf(stdout,"0\n0\n3 1.00262e+07 1.00262e+07 1.00262e+07\n");
 
-  // complete the sun
+  // complete the Radiance sun object
   fprintf(stdout,"solar source sun\n");
-  fprintf(stdout,"0\n0\n4 %g %g %g %.3f\n",sunPos[0],sunPos[1],sunPos[2],discSize);
+  fprintf(stdout,"0\n0\n4 %g %g %g %.4f\n",sunPos[0],sunPos[1],sunPos[2],discSize);
 
-  return(TRUE);
+  return(true);
 }
 
 
@@ -174,64 +290,39 @@ void userror(char  *msg) {
 
 int main(int argc, char **argv) {
 
-  int i;
   char errmsg[128];
 
   // time stuff
-  double simJD;		// Julian day, simulated
-  struct ln_date date;	// date structure
-  struct ln_zonedate zdate;	// date structure, includes gmtoff (seconds east of UTC)
+  Time time;		// structure holds libnova and/or astronomy date
   int year,month,day;
-  double hour;
+  int ihour,iminute;
+  double dhours,dminutes,dseconds;
 
   // location stuff
-  struct ln_lnlat_posn observer;
-  int got_meridian = 0;
+  double observer[3];	// lat (deg), long (deg), height (m)
+  bool got_meridian = false;
   double s_meridian = 0.0;
 
   // astronomy stuff
   float sunPos[3];
   int tsolar;
-  int isSun = FALSE;
-  int isSky = FALSE;
-  int isMoon = FALSE;
-  int isStars = FALSE;
+  bool isSun = false;
 
   // atmosphere stuff
   float turbidity = 2.45;	// gensky default, also near europe average
-  double gprefl = 0.2;		// deciduous forest
 
   // set defaults ---------------------------------------
 
-  // set to my house in Newton Center
-  observer.lat = 42.36;
-  observer.lng = -71.06;	// note: east longitude (use west for cli)
+  // set to Boston
+  observer[0] = 42.36;
+  observer[1] = -71.06;	// note: east longitude (use west for cli)
+  observer[2] = 10.0;	// this is in meters
 
-  // set the julian date to right now
-  simJD = ln_get_julian_from_sys();
+  set_to_now(&time);
+  write_utc(time);
 
-  //(void) ln_get_local_date (simJD, &date);
-  //fprintf(stdout,"# %4d-%02d-%02d %2d:%02d:%02d\n",
-  //        date.years,date.months,date.days,
-  //        date.hours,date.minutes,(int)date.seconds);
-
-  // create the time string for the current date
-  (void) ln_get_date (simJD, &date);
-  //fprintf(stdout,"# UTC now: %4d-%02d-%02d %2d:%02d:%02d\n",
-  //        date.years,date.months,date.days,
-  //        date.hours,date.minutes,(int)date.seconds);
-
-  // 14400 for 4 hours behind UTC
-  //(void) ln_date_to_zonedate (&date, &zdate, -14400);
-  //fprintf(stdout,"# Local time now: %4d-%02d-%02d %2d:%02d:%02d\n",
-  //        zdate.years,zdate.months,zdate.days,
-  //        zdate.hours,zdate.minutes,(int)zdate.seconds);
-
-  // and use those as defaults (really only to set the year)
-  year = date.years;
-  month = date.months;
-  day = date.days;
-  hour = date.hours + date.minutes/60. + date.seconds/3600.;
+  // pull year out of UTC and set as default
+  year = get_year(time);
 
   // parse command-line arguments -----------------------
   // 1st arg is month number
@@ -242,97 +333,76 @@ int main(int argc, char **argv) {
 
   // use code from gensky.c
 
-        progname = argv[0];
-        if (argc < 4)
-                userror("arg count");
-        month = atoi(argv[1]);
-        if (month < 1 || month > 12)
-                userror("bad month");
-        day = atoi(argv[2]);
-        if (day < 1 || day > 31)
-                userror("bad day");
-        got_meridian = cvthour(argv[3], &hour, &tsolar, &s_meridian);
-        for (i = 4; i < argc; i++)
-                if (argv[i][0] == '-' || argv[i][0] == '+')
-                        switch (argv[i][1]) {
-                        case 'y':
-                                year = atoi(argv[++i]);
-                                break;
-                        case 't':
-                                turbidity = atof(argv[++i]);
-                                break;
-                        case 'g':
-                                gprefl = atof(argv[++i]);
-                                break;
-                        case 'a':
+  progname = argv[0];
+  if (argc < 4)
+          userror("arg count");
+  month = atoi(argv[1]);
+  if (month < 1 || month > 12)
+          userror("bad month");
+  day = atoi(argv[2]);
+  if (day < 1 || day > 31)
+          userror("bad day");
+  got_meridian = (bool)cvthour(argv[3], &dhours, &tsolar, &s_meridian);
+  for (int i = 4; i < argc; i++)
+          if (argv[i][0] == '-' || argv[i][0] == '+')
+                  switch (argv[i][1]) {
+                  case 'y':
+                          year = atoi(argv[++i]);
+                          break;
+                  case 't':
+                          turbidity = atof(argv[++i]);
+                          break;
+                  case 'a':
 				// keep in degrees!
-                                //observer.lat = atof(argv[++i]) * (PI/180);
-                                observer.lat = atof(argv[++i]);
-                                break;
-                        case 'o':
+                          observer[0] = atof(argv[++i]);
+                          break;
+                  case 'o':
 				// note negative to match gensky behavior!
-                                //observer.lng = -atof(argv[++i]) * (PI/180);
-                                observer.lng = -atof(argv[++i]);
-                                break;
-                        case 'm':
-                                if (got_meridian) {
-                                        ++i;
-                                        break;          /* time overrides */
-                                }
+                          observer[1] = -atof(argv[++i]);
+                          break;
+                  case 'm':
+                          if (got_meridian) {
+                                  ++i;
+                                  break;          /* time overrides */
+                          }
 				// keep in degrees
-                                //s_meridian = atof(argv[++i]) * (PI/180);
-                                s_meridian = atof(argv[++i]);
-                                break;
-                        default:
-                                sprintf(errmsg, "unknown option: %s", argv[i]);
-                                userror(errmsg);
-                        }
-                else
-                        userror("bad option");
+                          s_meridian = atof(argv[++i]);
+                          break;
+                  default:
+                          sprintf(errmsg, "unknown option: %s", argv[i]);
+                          userror(errmsg);
+                  }
+          else
+                  userror("bad option");
 
-        // if no meridian, assume local time?
-        if (!got_meridian) s_meridian = -observer.lng;
-        // check for meridian far away from observer location
-        if (fabs(s_meridian+observer.lng) > 45.)
-                fprintf(stderr,
-        "%s: warning: %.1f hours btwn. standard meridian and longitude\n",
-                        progname, (-observer.lng-s_meridian)/15.);
+  // if no meridian, assume local time?
+  if (!got_meridian) s_meridian = -observer[1];
+  // check for meridian far away from observer location
+  if (fabs(s_meridian+observer[1]) > 45.)
+          fprintf(stderr,
+  "%s: warning: %.1f hours btwn. standard meridian and longitude\n",
+                  progname, (-observer[1]-s_meridian)/15.);
 
-        printhead(argc, argv);
+  printhead(argc, argv);
 
-        //fprintf(stdout,"tsolar %d\n",tsolar);
-        //fprintf(stdout,"got_meridian %d\n",got_meridian);
-        //fprintf(stdout,"s_meridian %g\n",s_meridian);
-        //fprintf(stdout,"observer.lng %g\n",observer.lng);
+  //fprintf(stdout,"tsolar %d\n",tsolar);
+  //fprintf(stdout,"got_meridian %d\n",got_meridian);
+  //fprintf(stdout,"s_meridian %g\n",s_meridian);
+  //fprintf(stdout,"observer.lng %g\n",observer[1]);
 
 
   // convert the time -----------------------------------
 
-  // change date to match input
-  //date.years = year;
-  //date.months = month;
-  //date.days = day;
-  //date.hours = floor(hour);
-  //simJD = ln_get_julian_day(&date);
-  //fprintf(stdout,"# jd %15.10e\n",simJD);
-
-  zdate.years = year;
-  zdate.months = month;
-  zdate.days = day;
-  zdate.hours = floor(hour);
-  zdate.minutes = floor(60.*(hour-(double)(zdate.hours)));
-  zdate.seconds = 3600.*(hour-(double)(zdate.hours)-(double)(zdate.minutes)/60.);
-  zdate.gmtoff = 86400 - (long)(240.*s_meridian);
-  fprintf(stdout,"# Using time: %4d-%02d-%02d %2d:%02d:%02d\n",
-          zdate.years,zdate.months,zdate.days,
-          zdate.hours,zdate.minutes,(int)zdate.seconds);
-  simJD = ln_get_julian_local_date(&zdate);
-  fprintf(stdout,"# Julian day: %15.10e\n",simJD);
+  ihour = floor(dhours);
+  dminutes = 60.*(dhours-(double)(ihour));
+  iminute = floor(dminutes);
+  dseconds = 60.*(dminutes-(double)(iminute));
+  set_to_given(&time, year, month, day, ihour, iminute, dseconds, s_meridian);
 
   // write output ---------------------------------------
 
   // compute and write the sun "light" and "source" descriptions
-  isSun = writeSun (simJD, observer, turbidity, sunPos);
+  isSun = writeSun (&time, observer, turbidity, sunPos);
 
   // ANSI C requires main to return int
   return 0;
