@@ -9,16 +9,22 @@ Here are [slides from a presentation about Radiance skies](http://markjstock.org
 
 ### How to use it
 
-To build the genutahsky executable, you will need a C compiler and the libnova libraries. On Fedora or Ubuntu, you can get this by running, respectively:
+To build the genutahsky executable, you will need a C compiler. This is alreday installed on most Linux systems, but in case you need it, run either:
 
-    sudo dnf install libnova-devel
-    sudo apt-get install libnova-dev
+    sudo dnf install gcc
+    sudo apt-get install gcc
 
-Once you have those, grab this repository with:
+Then to build the software just run:
 
     git clone --depth 1 https://github.com/markstock/GenUtahSky.git
     cd GenUtahSky
     make
+
+If you want to use the libnova library instead, first install it and then build with the following:
+
+    sudo dnf install libnova-devel		(for Fedora)
+    sudo apt-get install libnova-dev	(for Ubuntu)
+    LIBNOVA=ON make
 
 Run a simple test with
 
