@@ -576,6 +576,41 @@ int writeStars (Time* time, double zPos, const double inloc[3]) {
   //fprintf(stderr,"equatorial star az %g  alt %g\n",hrz.az,hrz.alt);
   //fprintf(stderr,"equatorial star x,y,z %g %g %g\n",veq[0],veq[1],veq[2]);
 
+#else
+  // set observer and test stars
+  astro_observer_t observer = Astronomy_MakeObserver(inloc[0], inloc[1], inloc[2]);
+
+  // hypothetical equatorial star
+  // args are body, ra (0..24), dec (-90..90), dist (LY)
+  Astronomy_DefineStar(BODY_STAR1, 0.0, 0.0, 1.0e+6);
+  // hypothetical pole star
+  Astronomy_DefineStar(BODY_STAR2, 0.0, 90.0, 1.0e+6);
+
+  // vector to zero-meridian on equator
+  astro_equatorial_t equ_ofdate = Astronomy_Equator(BODY_STAR1, &(time->atime), observer, EQUATOR_OF_DATE, ABERRATION);
+  astro_horizon_t hor = Astronomy_Horizon(&(time->atime), observer, equ_ofdate.ra, equ_ofdate.dec, REFRACTION_NONE);
+  veq[0] = sin(hor.azimuth*DEGTORAD)*cos(hor.altitude*DEGTORAD);
+  veq[1] = cos(hor.azimuth*DEGTORAD)*cos(hor.altitude*DEGTORAD);
+  veq[2] = sin(hor.altitude*DEGTORAD);
+  //fprintf(stderr,"equatorial star az %g  alt %g\n",hor.azimuth,hor.altitude);
+  //fprintf(stderr,"equatorial star x,y,z %g %g %g\n",veq[0],veq[1],veq[2]);
+
+  // vector to pole
+  equ_ofdate = Astronomy_Equator(BODY_STAR2, &(time->atime), observer, EQUATOR_OF_DATE, ABERRATION);
+  hor = Astronomy_Horizon(&(time->atime), observer, equ_ofdate.ra, equ_ofdate.dec, REFRACTION_NONE);
+  vnorth[0] = sin(hor.azimuth*DEGTORAD)*cos(hor.altitude*DEGTORAD);
+  vnorth[1] = cos(hor.azimuth*DEGTORAD)*cos(hor.altitude*DEGTORAD);
+  vnorth[2] = sin(hor.altitude*DEGTORAD);
+  //fprintf(stderr,"north star az %g  alt %g\n",hor.azimuth,hor.altitude);
+  //fprintf(stderr,"north star x,y,z %g %g %g\n",vnorth[0],vnorth[1],vnorth[2]);
+
+  // find second rotation (azimuth is always ~180)
+  rx1 = hor.altitude - 90.;
+  // find third rotation
+  rz2 = hor.azimuth;// - 180.;
+
+#endif
+
   // first z-rotation
   // NOTE: this first rotation needs a fixed offset, but I don't know
   // what to use. Maybe render a view at midnight and then run Stallarium
@@ -595,10 +630,6 @@ int writeStars (Time* time, double zPos, const double inloc[3]) {
   // include the proper file with the proper rotations
   fprintf(stdout,"\n# Stars from Tycho-2 star catalog\n");
   fprintf(stdout,"!xform -rz %g -rx %g -rz %g stardome.rad\n",rz1,rx1,rz2);
-
-#else
-  // nothing yet
-#endif
 
   // old way: create the geometry calls right here
   if (false) {
