@@ -1,7 +1,10 @@
 CC=cc
 CFLAGS=-std=c99
-DEFS=-DLIBNOVA -DASTRO
-LIBS=-lm -lnova
+LIBS=-lm
+ifdef LIBNOVA
+  DEFS=-DLIBNOVA
+  LIBS+=-lnova
+endif
 
 all : genutahsky getsunvec
 
