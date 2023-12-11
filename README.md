@@ -11,12 +11,12 @@ Slides from a presentation about this software are at http://markjstock.org/radi
 
 To build the genutahsky executable, you will need a C compiler and the libnova libraries. On Fedora or Ubuntu, you can get this by running, respectively:
 
-    sudo yum install libnova-devel
+    sudo dnf install libnova-devel
     sudo apt-get install libnova-dev
 
 Once you have those, grab this repository with:
 
-    git clone https://github.com/markstock/GenUtahSky.git
+    git clone --depth 1 https://github.com/markstock/GenUtahSky.git
     cd GenUtahSky
     make
 
