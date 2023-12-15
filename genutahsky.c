@@ -155,6 +155,7 @@ int writeSun (Time* time, const double inloc[3], const double turb, float *sunPo
 
   double alti, azim;	// apparent altitude, azimuth from observer on earth
   double discSize;		// solar disc size
+  double appar_mag;		// apparent magnitude
   double maxAngularSegmentSize = 1.0;	// maximum size of source disc
 					//  <0.53 means subsample the sun
 
@@ -178,6 +179,8 @@ int writeSun (Time* time, const double inloc[3], const double turb, float *sunPo
   // sun disc size (always about 0.53 deg)
   discSize = 2.*ln_get_solar_sdiam(time->jd)/3600.0;
 
+  // get brightness (at ground?)
+  appar_mag = −26.74;
 #else
 
   astro_observer_t observer = Astronomy_MakeObserver(inloc[0], inloc[1], inloc[2]);
@@ -191,8 +194,13 @@ int writeSun (Time* time, const double inloc[3], const double turb, float *sunPo
   // get solar disc size in deg
   discSize = 2.0*RAD2DEG*atan(SUN_RADIUS_KM / (KM_PER_AU*equ_ofdate.dist));
 
+  // get brightness (at ground?)
+  astro_illum_t illum = Astronomy_Illumination(BODY_SUN, time->atime);
+  appar_mag = illum.mag;
 #endif
+
   fprintf(stdout,"# solar altitude %7.3f deg, azimuth %7.3f deg, size %.4f deg\n",alti,azim,discSize);
+  fprintf(stdout,"# magnitude %7.4f\n",appar_mag);
 
   // position in vector format
   sunPos[0] = sin(azim*DEGTORAD)*cos(alti*DEGTORAD);
@@ -202,9 +210,81 @@ int writeSun (Time* time, const double inloc[3], const double turb, float *sunPo
   // sun is too low, do not draw
   if (alti < -20.0) return(false);
 
+  // NEW
+
+  // if sun is larger, we get more energy
+  const double disc_size_multiple = pow(discSize/0.536, 2);
+
+  // irradiance (E_e) is in W/m^2
+  // at Earth distance, average solar irradiance is 1361 W/m^2 (over all spectra)
+  // https://en.wikipedia.org/wiki/Solar_irradiance
+  const double irrad_toa = 1361. * disc_size_multiple;
+
+  // radiance (L_e) is in W/(sr m^2) and is what goes into the source material
+  // using average solar disc size of 0.536 degrees, that's 6.87344079e-05 sr
+  // https://en.wikipedia.org/wiki/Sun
+  // making radiance at Earth distance 1361/6.87344079e-05 = 1.9801e+7 W/(sr m^2)
+  const double rad_toa = irrad_toa / 6.87344079e-05;
+
+  // but this 1361W is over the whole spectrum - how much are in R,G,B bands? less than 1/3rd!
+  // found numbers indicating 40% of power is in visible bands
+
+  // and assuming an equal distribution across rgb bands, that's 2640133 each, top-of-atmosphere
+  const double radperband_toa = 0.4 * rad_toa / 3.;
+
+  // illuminance (E_v) is in lux, or lumens/m^2
+  // https://en.wikipedia.org/wiki/Illuminance#Relation_to_luminance
+  // at peak sensitivity, 1W = 683 lumens
+  // but luminous efficacy of sunlight at 5800K is 93 lm/W (or 98?)
+  // https://en.wikipedia.org/wiki/Luminous_efficacy#Lighting_efficiency
+  // note that 5800K truncated to the visible spectrum is 251 lm/W
+  // higher because 1W in the visible spectrum is brighter than 1 W spread across a blackbody spectrum
+  // making illuminance 1361 * 98 = 133378
+
+  // another calculation for illuminance (E_v) is from "apparent magnitude"
+  // https://en.wikipedia.org/wiki/Illuminance#Astronomy
+  //const double illuminance = pow(10.0, 0.4*(-14.18-appar_mag));
+  // Sun has an apparent magnitude of −26.74 (also given by the library)
+  // making E_v = 105682 lm/m^2
+
+  // why the difference? because the apparent magnitude is measured at sea level
+
+  // the sky attenuates the sun's radiation
+  // at Earth's surface, 1361 W/m^2 is attenuated to 1050 at most, and another 70 from the sky
+  // note that 1050/1361 = 0.77149, while 105682/133378 = 0.79235
+  // let's call it 22% for each normal optical depth
+  // then we scale radiance by pow(0.78, 1/cos(a)), where a=0 for directly overhead
+
+  // how to scale with altitude?
+  // as a first guess, we're only scaling the integrated density of the air above us
+  // conveniently, that's measured by pressure, the ratio vs. sea level can be
+  // approximated using the scale height of 8400m as p/p_0 = exp(-h/8400)
+  // https://en.wikipedia.org/wiki/Barometric_formula
+  const double altitude_factor = 1.0 - 0.22*exp(-inloc[2] / 8400.);
+
+  // and scale by sun elevation angle (increased optical depth)
+  // but avoid division by zero and allow horizontal sun to have some brightness
+  const double angle_multiple = 1.0 / sin((0.05*90. + 0.95*fmax(0.0,alti))*DEGTORAD);
+
+  // giving the per-channel radiance at altitude given sun height as
+  const double radperband_atloc = radperband_toa * pow(altitude_factor, angle_multiple);
+
+  // so for an overhead sun on a clear day at sea level, that's 2059304
+  const double lum = radperband_atloc;
+
+  //fprintf(stderr,"# sun stuff %g %g %g %g\n", radperband_toa, altitude_factor, angle_multiple, radperband_atloc);
+
+  // ALTERNATE
+  // irradiance is in W/m^2, and needs a luminous efficacy
+  //const double irradiance = pow(10.0, 0.4*(-14.18-appar_mag)) / 98.;
+  // note that the magnitudes from Astronomy are not corrected for atmosphere! the are top-of-atmosphere
+
+  // OLD
   // sun brightness (from gensky.c, color.h) at ground level
-  // can we adjust for elevation someday?
-  double lum = 1.5e9/SUNEFFICACY * (1.147 - .147/(sunPos[2]>.16?sunPos[2]:.16));
+  // 1.5e+9 is 103100 / sun size in sr (from above)
+  // but why is sun efficacy twice what we expect
+  // and why is this not split into color bands?
+  //double lum = 1.5e9/SUNEFFICACY * (1.147 - .147/(sunPos[2]>.16?sunPos[2]:.16));
 
   // give option of breaking sun up into many smaller suns
   // this will allow smoother penumbras at the cost of extra computation
@@ -322,7 +402,6 @@ int writeMoon (Time* time, const double inloc[3]) {
   phase = illum.phase_angle;
   appar_mag = illum.mag;
   discFrac = illum.phase_fraction;
-  //double illuminance = pow(10, 0.4*(-14.18-appar_mag));
 #endif
 
   // position in vector format
@@ -330,14 +409,17 @@ int writeMoon (Time* time, const double inloc[3]) {
   lunPos[1] = cos(azim*DEGTORAD)*cos(alti*DEGTORAD);
   lunPos[2] = sin(alti*DEGTORAD);
 
-  fprintf(stdout,"\n# Lunar altitude %7.3f deg, azimuth %7.3f deg\n",alti,azim);
-  fprintf(stdout,"# magnitude %7.4f, phase %7.3f, disc illum fraction %7.3f, disc size %6.3f deg\n",
-          appar_mag,phase,discFrac,discSize);
+  fprintf(stdout,"\n# Lunar altitude %7.3f deg, azimuth %7.3f deg, size %6.3f deg\n",alti,azim,discSize);
+  fprintf(stdout,"# magnitude %7.4f, phase %7.3f, disc illum fraction %7.3f\n",appar_mag,phase,discFrac,discSize);
 
   // if too low, do not draw
   if (alti < -10.0) return(false);
 
   // phase 0/360 is full, 180 is new
+
+  // illuminance is in lux, or lumens/m^2
+  const double illuminance = pow(10.0, 0.4*(-14.18-appar_mag));
+  // but light sources use radiance, which is W/sr/m^2
 
   // luminance is 1/449000 of full bright sun
   // and scaled by fraction visible
@@ -883,6 +965,10 @@ int main(int argc, char **argv) {
 		// note negative to match gensky behavior!
         observer[1] = -atof(argv[++i]);
         break;
+      case 'e':
+		// elevation in meters
+        observer[2] = atof(argv[++i]);
+        break;
       case 'm':
         if (got_meridian) {
           ++i;
@@ -927,9 +1013,9 @@ int main(int argc, char **argv) {
   // write output ---------------------------------------
 
 #ifdef LIBNOVA
-  fprintf(stdout,"# using libnova for atronomical data\n");
+  fprintf(stdout,"# using libnova for astronomical data\n");
 #else
-  fprintf(stdout,"# using Astronomy for atronomical data\n");
+  fprintf(stdout,"# using Astronomy for astronomical data\n");
 #endif
 
   // compute and write the sun "light" and "source" descriptions
