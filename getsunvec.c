@@ -2,7 +2,7 @@
 // getsunvec.c
 //
 // Just dump the vector to the sun, assuming +x east, +y north, +z up
-// and brightness equal to top-of-atmosphere
+// and radiance equal to top-of-atmosphere
 //
 // Portions Copyright (c) Mark J. Stock., 2009, 2023
 //
@@ -111,13 +111,38 @@ int writeSun (Time* time, const double inloc[3], const double turb, float *sunPo
 
   // do not adjust sun position due to refraction in atmosphere
 
+  // NEW
+
+  // if sun is larger, we get more energy
+  const double disc_size_multiple = pow(discSize/0.536, 2);
+
+  // irradiance (E_e) is in W/m^2
+  // at Earth distance, average solar irradiance is 1361 W/m^2 (over all spectra)
+  // https://en.wikipedia.org/wiki/Solar_irradiance
+  const double irrad_toa = 1361. * disc_size_multiple;
+
+  // radiance (L_e) is in W/(sr m^2) and is what goes into the source material
+  // using average solar disc size of 0.536 degrees, that's 6.87344079e-05 sr
+  // https://en.wikipedia.org/wiki/Sun
+  // making radiance at Earth distance 1361/6.87344079e-05 = 1.9801e+7 W/(sr m^2)
+  const double rad_toa = irrad_toa / 6.87344079e-05;
+
+  // but this 1361W is over the whole spectrum - how much are in R,G,B bands? less than 1/3rd!
+  // found numbers indicating 40% of power is in visible bands
+
+  // and assuming an equal distribution across rgb bands, that's 2640133 each, top-of-atmosphere
+  const double radperband_toa = 0.4 * rad_toa / 3.;
+
+  const double lum = radperband_toa;
+
+  // OLD
   // sun brightness (from gensky.c, color.h)
   // this is for Earth's surface, not top-of-atmosphere
   //double lum = 1.5e9/SUNEFFICACY * (1.147 - .147/(sunPos[2]>.16?sunPos[2]:.16));
-  double lum = 1.5e9/SUNEFFICACY;
+  //double lum = 1.5e9/SUNEFFICACY;
 
   // is this top-of-atmosphere?
-  lum = 1.00262e+07;
+  //lum = 1.00262e+07;
 
 #ifdef LIBNOVA
   // use solar disc size?
@@ -125,10 +150,10 @@ int writeSun (Time* time, const double inloc[3], const double turb, float *sunPo
   //lum = 0.000142*exp(-0.921*appar_mag);
 #else
   // get apparent magnitude of sun
-  astro_illum_t sun_illum = Astronomy_Illumination(BODY_SUN, time->atime);
-  double appar_mag = sun_illum.mag;
+  //astro_illum_t sun_illum = Astronomy_Illumination(BODY_SUN, time->atime);
+  //double appar_mag = sun_illum.mag;
   // see https://en.wikipedia.org/wiki/Illuminance#Astronomy
-  double illuminance = pow(10, 0.4*(-14.18-appar_mag));
+  //double illuminance = pow(10, 0.4*(-14.18-appar_mag));
 #endif
 
   // give option of breaking sun up into many smaller suns
