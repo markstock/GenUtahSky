@@ -13,6 +13,7 @@ all : genutahsky getsunvec
 
 install :
 	lastpath=$(echo "${RAYPATH}" | tr ':' '\n' | tail -n 1)
+	[[ -z "${lastpath}" ]] && echo "Error: RAYPATH is not defined; set it and re-run 'make install'"
 	[[ -n "${lastpath}" ]] && cp *.cal ${lastpath} && cp TychoSkymapII*hdr ${lastpath} && cp stardome.rad ${lastpath}
 
 clean :
