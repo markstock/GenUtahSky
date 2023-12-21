@@ -40,11 +40,19 @@ If you don't want to clutter your working directory up, drop these files into yo
 
 If you're going to use `pcond` on night scenes, use `-v -s` instead of `-h`. The latter will blur the stars unrealistically.
 
+### Better star map
+
+It makes no sense to put a 500MB file in this repository, so we provide a script to download and convert a high-resolution starfield for use with GenUtahSky. On a Fedora machine with >2GB of drive space available, you should be able to do this with:
+
+	sudo dnf install curl ImageMagick
+	./makestarmap.sh
+
+Then just edit `stardome.rad` and replace `TychoSkymapII.t5_08192x04096.hdr` with `starmap_2020_16k_scaled.hdr`.
+
 ### To Do
 
 * Use CMake to build and install the package (putting necessary files into radiance library location and binaries into /usr/local/bin
-* Update starfield to https://svs.gsfc.nasa.gov/4851/
-* Have build script retrieve the starfield and reduce its resolution (and increase bit depth) instead of storing it directly in the repository
+* Create a cal file to render the correct moon phase
 
 ### Copyrights and licensing
 
@@ -54,7 +62,7 @@ All sky color numbers are from the original [Preetham, Shirley, Smits paper](htt
 
 The program optionally links with the [LibNova library](http://libnova.sourceforge.net/) for astronomical calculations, maintained by Liam Girdwood and Petr Kubanek. It also uses [Astronomy](https://github.com/cosinekitty/astronomy) if libnova is unavailable.
 
-The starfield is courtesy the NASA/Goddard Space Flight Center Scientific Visualization Studio, and was generated from the Tycho II Star Survey. I processed their original high-resolution 8bpp image to a smaller 12bpp hdr image. [Original data](http://svs.gsfc.nasa.gov/cgi-bin/details.cgi?aid=3572)
+The starfield included in this repo is courtesy the NASA/Goddard Space Flight Center Scientific Visualization Studio, and was generated from the Tycho II Star Survey. I processed their original high-resolution 8bpp image to a smaller 12bpp hdr image. [Original data](http://svs.gsfc.nasa.gov/cgi-bin/details.cgi?aid=3572). The `makestarmap.sh` grabs a newer dataset with a much nicer-looking Milky Way and a lot more stars. [Original data is here](https://svs.gsfc.nasa.gov/4851/).
 
 All other material is (c) 2009,23 Mark J. Stock
 
