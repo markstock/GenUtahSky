@@ -11,5 +11,9 @@ all : genutahsky getsunvec
 % : %.c astronomy.c
 	$(CC) $(CFLAGS) $(DEFS) -o $@ $^ $(LIBS)
 
+install :
+	lastpath=$(echo "${RAYPATH}" | tr ':' '\n' | tail -n 1)
+	[[ -n "${lastpath}" ]] && cp *.cal ${lastpath} && cp TychoSkymapII*hdr ${lastpath} && cp stardome.rad ${lastpath}
+
 clean :
 	rm -f *.o genutahsky getsunvec
