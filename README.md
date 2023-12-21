@@ -9,7 +9,7 @@ Here are [slides from a presentation about Radiance skies](http://markjstock.org
 
 ### How to use it
 
-To build the genutahsky executable, you will need a C compiler. This is alreday installed on most Linux systems, but in case you need it, run either:
+To build the genutahsky executable, you will need a C compiler. This is already installed on most Linux systems, but in case you need it, run either:
 
     sudo dnf install gcc
     sudo apt-get install gcc
