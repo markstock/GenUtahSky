@@ -43,7 +43,7 @@ char *progname;
 #define  toupper(c)     ((c) & ~0x20)   /* ASCII trick to convert case */
 
 // M^-1 for Adobe RGB from http://www.brucelindbloom.com/Eqn_RGB_XYZ_Matrix.html
-static float mi[3][3] = {2.041369, -0.969266, 0.0134474, -0.5649464, 1.8760108, -0.1183897, -0.3446944, 0.041556, 1.0154096};
+static float mi[3][3] = {{2.041369, -0.969266, 0.0134474}, {-0.5649464, 1.8760108, -0.1183897}, {-0.3446944, 0.041556, 1.0154096}};
 
 // time zone characters from gensky.c
 struct {
@@ -341,10 +341,10 @@ int writeMoon (Time* time, const double inloc[3]) {
 
   double alti, azim;	// apparent altitude, azimuth from observer on earth
   double discSize;		// solar disc size from libnova
-  double adjAlt;		// altitude adjustment
+  //double adjAlt;		// altitude adjustment
   double lum;			// luminance, best guess
   double appar_mag;		// apparent magnitude
-  double phase,discFrac,limb;
+  double phase,discFrac;//,limb;
   float lunPos[3],lunC[3];
 
   // set lunar color (slightly brownish)
@@ -379,7 +379,7 @@ int writeMoon (Time* time, const double inloc[3]) {
   discFrac = ln_get_lunar_disk(time->jd);
 
   // get altitude adjustment due to refraction (altitude, p in millibars, temp in C)
-  adjAlt = ln_get_refraction_adj (hrz.alt,1010.,10.);
+  //double adjAlt = ln_get_refraction_adj (hrz.alt,1010.,10.);
 
   // get phase details -- later
   // limb = ln_get_lunar_bright_limb(time->jd);
@@ -410,7 +410,7 @@ int writeMoon (Time* time, const double inloc[3]) {
   lunPos[2] = sin(alti*DEGTORAD);
 
   fprintf(stdout,"\n# Lunar altitude %7.3f deg, azimuth %7.3f deg, size %6.3f deg\n",alti,azim,discSize);
-  fprintf(stdout,"# magnitude %7.4f, phase %7.3f, disc illum fraction %7.3f\n",appar_mag,phase,discFrac,discSize);
+  fprintf(stdout,"# magnitude %7.4f, phase %7.3f, disc illum fraction %7.3f\n",appar_mag,phase,discFrac);
 
   // if too low, do not draw
   if (alti < -10.0) return(false);
@@ -418,7 +418,7 @@ int writeMoon (Time* time, const double inloc[3]) {
   // phase 0/360 is full, 180 is new
 
   // illuminance is in lux, or lumens/m^2
-  const double illuminance = pow(10.0, 0.4*(-14.18-appar_mag));
+  //const double illuminance = pow(10.0, 0.4*(-14.18-appar_mag));
   // but light sources use radiance, which is W/sr/m^2
 
   // luminance is 1/449000 of full bright sun
@@ -442,7 +442,7 @@ void writePlanets (Time* time, const double inloc[3]) {
   float pos[3],col[3],mars_col[3],jup_col[3];
   double alti, azim;	// apparent altitude, azimuth from observer on earth
   double lum;			// luminance, best guess
-  double discFrac,discSize;
+  double discSize,discFrac;
 
   // white
   col[0] = 1.0;
@@ -484,6 +484,7 @@ void writePlanets (Time* time, const double inloc[3]) {
   alti = hrz.alt;
   azim = hrz.az+180.0;
   if (azim > 360.0) azim -= 360.0;
+  discFrac = 1.0;
 #else
   equ_ofdate = Astronomy_Equator(BODY_VENUS, &(time->atime), observer, EQUATOR_OF_DATE, ABERRATION);
   hor = Astronomy_Horizon(&(time->atime), observer, equ_ofdate.ra, equ_ofdate.dec, REFRACTION_NORMAL);
@@ -499,7 +500,7 @@ void writePlanets (Time* time, const double inloc[3]) {
   pos[1] = cos(azim*DEGTORAD)*cos(alti*DEGTORAD);
   pos[2] = sin(alti*DEGTORAD);
 
-  fprintf(stdout,"\n# Venus at alt %7.3f deg, az %7.3f deg, magnitude %7.3f, disc %6.2f asec\n",alti,azim,lum,3600*discSize);
+  fprintf(stdout,"\n# Venus at alt %7.3f deg, az %7.3f deg, magnitude %7.3f, disc %6.2f asec, frac %6.2f\n",alti,azim,lum,3600*discSize,discFrac);
   if (alti > -5.0) {
     // convert to luminance
     lum = 0.000142*exp(-0.921*lum);
@@ -521,6 +522,7 @@ void writePlanets (Time* time, const double inloc[3]) {
   alti = hrz.alt;
   azim = hrz.az+180.0;
   if (azim > 360.0) azim -= 360.0;
+  discFrac = 1.0;
 #else
   equ_ofdate = Astronomy_Equator(BODY_JUPITER, &(time->atime), observer, EQUATOR_OF_DATE, ABERRATION);
   hor = Astronomy_Horizon(&(time->atime), observer, equ_ofdate.ra, equ_ofdate.dec, REFRACTION_NORMAL);
@@ -536,7 +538,7 @@ void writePlanets (Time* time, const double inloc[3]) {
   pos[1] = cos(azim*DEGTORAD)*cos(alti*DEGTORAD);
   pos[2] = sin(alti*DEGTORAD);
 
-  fprintf(stdout,"\n# Jupiter at alt %7.3f deg, az %7.3f deg, magnitude %7.3f, disc %6.2f asec\n",alti,azim,lum,3600*discSize);
+  fprintf(stdout,"\n# Jupiter at alt %7.3f deg, az %7.3f deg, magnitude %7.3f, disc %6.2f asec, frac %6.2f\n",alti,azim,lum,3600*discSize,discFrac);
   if (alti > -5.0) {
     // convert to luminance
     lum = 0.000142*exp(-0.921*lum);
@@ -557,6 +559,7 @@ void writePlanets (Time* time, const double inloc[3]) {
   alti = hrz.alt;
   azim = hrz.az+180.0;
   if (azim > 360.0) azim -= 360.0;
+  discFrac = 1.0;
 #else
   equ_ofdate = Astronomy_Equator(BODY_MARS, &(time->atime), observer, EQUATOR_OF_DATE, ABERRATION);
   hor = Astronomy_Horizon(&(time->atime), observer, equ_ofdate.ra, equ_ofdate.dec, REFRACTION_NORMAL);
@@ -572,7 +575,7 @@ void writePlanets (Time* time, const double inloc[3]) {
   pos[1] = cos(azim*DEGTORAD)*cos(alti*DEGTORAD);
   pos[2] = sin(alti*DEGTORAD);
 
-  fprintf(stdout,"\n# Mars at alt %7.3f deg, az %7.3f deg, magnitude %7.3f, disc %6.2f asec\n",alti,azim,lum,3600*discSize);
+  fprintf(stdout,"\n# Mars at alt %7.3f deg, az %7.3f deg, magnitude %7.3f, disc %6.2f asec, frac %6.2f\n",alti,azim,lum,3600*discSize,discFrac);
 
   if (alti > -5.0) {
     // convert to luminance
@@ -591,7 +594,8 @@ int writeStars (Time* time, double zPos, const double inloc[3]) {
 
   // some positions
 
-  float vnorth[3],veq[3];
+  //float vnorth[3];
+  float veq[3];
   float sinth,costh,rz1,rx1,rz2;
 
   // scale the brightness of the star map
@@ -633,9 +637,9 @@ int writeStars (Time* time, double zPos, const double inloc[3]) {
   //fprintf(stderr,"north star ra %g  dec %g\n",equ.ra,equ.dec);
   ln_get_hrz_from_equ (&equ, &obs, time->jd, &hrz);
 
-  vnorth[0] = -sin(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
-  vnorth[1] = -cos(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
-  vnorth[2] = sin(hrz.alt*DEGTORAD);
+  //vnorth[0] = -sin(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
+  //vnorth[1] = -cos(hrz.az*DEGTORAD)*cos(hrz.alt*DEGTORAD);
+  //vnorth[2] = sin(hrz.alt*DEGTORAD);
   //fprintf(stderr,"north star az %g  alt %g\n",hrz.az,hrz.alt);
   //fprintf(stderr,"north star x,y,z %g %g %g\n",vnorth[0],vnorth[1],vnorth[2]);
 
@@ -680,9 +684,9 @@ int writeStars (Time* time, double zPos, const double inloc[3]) {
   // vector to pole
   equ_ofdate = Astronomy_Equator(BODY_STAR2, &(time->atime), observer, EQUATOR_OF_DATE, ABERRATION);
   hor = Astronomy_Horizon(&(time->atime), observer, equ_ofdate.ra, equ_ofdate.dec, REFRACTION_NONE);
-  vnorth[0] = sin(hor.azimuth*DEGTORAD)*cos(hor.altitude*DEGTORAD);
-  vnorth[1] = cos(hor.azimuth*DEGTORAD)*cos(hor.altitude*DEGTORAD);
-  vnorth[2] = sin(hor.altitude*DEGTORAD);
+  //vnorth[0] = sin(hor.azimuth*DEGTORAD)*cos(hor.altitude*DEGTORAD);
+  //vnorth[1] = cos(hor.azimuth*DEGTORAD)*cos(hor.altitude*DEGTORAD);
+  //vnorth[2] = sin(hor.altitude*DEGTORAD);
   //fprintf(stderr,"north star az %g  alt %g\n",hor.azimuth,hor.altitude);
   //fprintf(stderr,"north star x,y,z %g %g %g\n",vnorth[0],vnorth[1],vnorth[2]);
 
@@ -816,7 +820,7 @@ void writeHaze (int isSun, int isSky, int isMoon, int isStars) {
     if (isMoon) fprintf(stdout," moon");
     // stars now included in skydome!
     //if (isStars) fprintf(stdout," starmap");
-    fprintf(stdout,"\n",isSun);
+    fprintf(stdout,"\n");
     // medium density
     //fprintf(stdout,"0\n7 1.2e-3 1.5e-3 1.7e-3 1 1 1 0.4\n");
     // lower density
@@ -911,7 +915,7 @@ int main(int argc, char **argv) {
 
   // atmosphere stuff
   float turbidity = 2.45;	// gensky default, also near europe average
-  double gprefl = 0.2;		// deciduous forest
+  //double gprefl = 0.2;		// deciduous forest
 
   // set defaults ---------------------------------------
 
@@ -955,7 +959,7 @@ int main(int argc, char **argv) {
         turbidity = atof(argv[++i]);
         break;
       case 'g':
-        gprefl = atof(argv[++i]);
+        //gprefl = atof(argv[++i]);
         break;
       case 'a':
 		// keep in degrees!

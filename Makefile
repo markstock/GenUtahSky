@@ -1,5 +1,5 @@
 CC=cc
-CFLAGS=-std=c99
+CFLAGS=-std=c99 -Wall
 LIBS=-lm
 ifdef LIBNOVA
   DEFS=-DLIBNOVA

@@ -363,5 +363,5 @@ int main(int argc, char **argv) {
   isSun = writeSun (&time, observer, turbidity, sunPos);
 
   // ANSI C requires main to return int
-  return 0;
+  return (int)isSun;
 }
