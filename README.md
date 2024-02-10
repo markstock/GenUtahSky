@@ -66,3 +66,15 @@ The starfield included in this repo is courtesy the NASA/Goddard Space Flight Ce
 
 All other material is (c) 2009,23 Mark J. Stock
 
+### Citing GenUtahSky
+
+I don't get paid for writing or maintaining this, so if you find this tool useful or mention it in your writing, please please cite it by using the following BibTeX entry.
+
+```
+@Misc{GenUtahSky2009,
+  author =       {Mark J.~Stock},
+  title =        {GenUtahSky: Radiance implementation of Preetham, Shirley, Smits model for sky color, plus more},
+  howpublished = {\url{https://github.com/markstock/GenUtahSky}},
+  year =         {2009}
+}
+```
